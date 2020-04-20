@@ -69,18 +69,37 @@ func echo(address string) (net.IPAddr, time.Duration, error) {
 	case ipv4.ICMPTypeEchoReply:
 		return ip, end_time, nil
 	default:
-		return ip, 0, fmt.Errorf("got %+v from %v; want echo reply", rm, peer)
+		return ip, 0, fmt.Errorf("got %+v from %v; no reply", rm, peer)
 
 	}
 }
 
+func calculate_loss(pass, fail int) float32 {
+	total := float32(pass + fail)
+	ratio := float32(fail) / total
+	return ratio
+}
+func ping(addr string) {
+	pass, fail := 0, 0
+
+	for {
+		dst, dur, _ := echo(addr)
+
+		// calculate packet loss by counting 0ms messages, bad hack, but I want to go to sleep -_-
+		if dur == 0 {
+			fail++
+		} else {
+			pass++
+		}
+		loss_ratio := calculate_loss(pass, fail)
+
+		log.Printf("ping: %s RTT: (%s) Loss: %0.2f%%", dst, dur, loss_ratio)
+		time.Sleep(1 * time.Second)
+	}
+}
 func main() {
 	args := os.Args
-	ip := grabIP(args[1])
-	fmt.Println(ip)
 
-	dst, dur, err := echo(args[1])
-
-	log.Printf("ping %s (%s): %s", dst, dur, err)
+	ping(args[1])
 
 }
